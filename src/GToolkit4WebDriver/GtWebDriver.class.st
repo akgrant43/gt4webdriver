@@ -58,17 +58,25 @@ GtWebDriver >> initialize [
 
 { #category : #'as yet unclassified' }
 GtWebDriver >> newSession [
-	| response |
+
+	^ self newSessionWithOptions: Dictionary  new.
+]
+
+{ #category : #'as yet unclassified' }
+GtWebDriver >> newSessionWithOptions: webDriverOptions [
+	| response newSessionId |
 
 	response := ZnClient new
 		url: self driverUrl;
 		addPath: 'session';
-		entity: (ZnEntity json: '{
-			"capabilities" : {} }');
+		entity: (ZnEntity json: (STONJSON toString: webDriverOptions capabilities));
 		post.
-	^ ((STONJSON fromString: response)
+	newSessionId :=  ((STONJSON fromString: response)
 		at: 'value')
 		at: 'sessionId'.
+	^ GtWebDriverSession new
+		driver: self;
+		sessionId: newSessionId.
 ]
 
 { #category : #accessing }
@@ -90,8 +98,24 @@ GtWebDriver >> startDriver [
 		command: self driverCommand;
 		arguments: self driverArguments;
 		pipeStdout;
+		pipeStderr;
 		spawn.
 	driverProcess isRunning ifFalse:
-		[ self error: 'Unable to start driver' ].
-	driverProcess stdout
+		[ self formatError: 'Unable to start driver' ].
+	self updatePort.
+]
+
+{ #category : #'start-stop' }
+GtWebDriver >> stopDriver [
+
+	driverProcess ifNil: [ ^ self ].
+	driverProcess terminate.
+	driverProcess := nil.
+	port := 0.
+]
+
+{ #category : #private }
+GtWebDriver >> updatePort [
+
+	self subclassResponsibility
 ]
